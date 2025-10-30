@@ -7,7 +7,6 @@
     "start": "node server.js",
     "setup": "node database-setup.js",
     "cleanup": "node database-cleanup.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
