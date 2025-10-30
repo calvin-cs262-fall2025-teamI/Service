@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "setup": "node database-setup.js",
-    "cleanup": "node database-cleanup.js",
+    "cleanup": "node database-cleanup.js"
   },
   "repository": {
     "type": "git",
