@@ -4,7 +4,7 @@
   "description": "This holds the data of the service application.",
   "main": "index.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node parkmaster-service.js",
     "setup": "node database-setup.js",
     "cleanup": "node database-cleanup.js"
   },
@@ -24,6 +24,7 @@
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "pg": "^8.11.3",
-    "dotenv": "^16.3.1"
-  }
+    "dotenv": "^16.3.1",
+    "pg-promise": "^11.5.4"
+     }
 }
