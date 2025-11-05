@@ -92,7 +92,7 @@ app.get('/', (req, res) => {
     res.json({
         service: 'Parkmaster API',
         version: '1.0.0',
-        status: 'running',
+        status: 'App service is running',
         endpoints: {
             users: '/api/users',
             vehicles: '/api/vehicles',
