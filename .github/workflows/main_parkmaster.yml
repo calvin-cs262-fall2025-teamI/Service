@@ -51,9 +51,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_93256E85C9834B41946FB75341E52723 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_3E4874705F574D7690C4C159FF7104FE }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_47B70CA99EB0450BBDF655A2AD7A5B1B }}
+           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_F560EAC128E9478EAA423B107D9AF1BB }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_22B0063FAA9347A19B1B664C6A19A591 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_B91E3924931546D1A707D6C115BD1567 }}
 
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
@@ -62,4 +62,5 @@ jobs:
           app-name: 'parkmaster'
           slot-name: 'Production'
           package: .
+
           
