@@ -106,10 +106,12 @@ app.get('/', (req, res) => {
 // Health check endpoint
 app.get('/health', async (req, res) => {
     try {
-        await db.one('SELECT 1 as test');
+        const testData = await db.any('SELECT * FROM test_table');
         res.json({ 
             status: 'healthy', 
             database: 'connected',
+            testTableCount: testData.length,
+            testTableData: testData,
             timestamp: new Date().toISOString()
         });
     } catch (error) {
