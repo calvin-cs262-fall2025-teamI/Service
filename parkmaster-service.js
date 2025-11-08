@@ -23,7 +23,7 @@
  * 
  * @date: Fall 2025
  */
-
+const bcrypt = require('bcrypt');
 const express = require('express');
 const pgPromise = require('pg-promise');
 const cors = require('cors');
@@ -151,17 +151,17 @@ app.get('/api/users/email/:email', (req, res, next) => {
 app.post('/api/users', async (req, res, next) => {
     try {
         // Validate required fields
-        const { name, email, phone, role, department, status } = req.body;
+        const { name, email, phone, password, role, department, status } = req.body;
         
-        if (!name || !email || !role) {
+        if (!name || !email || !role || !password) {
             return res.status(400).json({ 
                 status: 'error', 
-                message: 'Missing required fields: name, email, and role are required' 
+                message: 'Missing required fields: name, email, password, and role are required' 
             });
         }
 
         // Check if email already exists
-        const existingUser = await db.oneOrNone('SELECT id FROM users WHERE email=${email}', { email });
+        const existingUser = await db.oneOrNone('SELECT id FROM users WHERE email = $1', [email]);
         if (existingUser) {
             return res.status(409).json({ 
                 status: 'error', 
@@ -169,15 +169,19 @@ app.post('/api/users', async (req, res, next) => {
             });
         }
 
+        // Hash the password
+        const passwordHash = await bcrypt.hash(password, 10);
+
         // Insert the new user and return the full user object
         const newUser = await db.one(
-            `INSERT INTO users(name, email, phone, role, department, status, avatar) 
-             VALUES ($/name/, $/email/, $/phone/, $/role/, $/department/, $/status/, $/avatar/) 
+            `INSERT INTO users(name, email, phone, password_hash, role, department, status, avatar) 
+             VALUES ($/name/, $/email/, $/phone/, $/password_hash/, $/role/, $/department/, $/status/, $/avatar/) 
              RETURNING id, name, email, phone, role, department, status, avatar, created_at`,
             {
                 name,
                 email: email.toLowerCase(), // Normalize email
                 phone: phone || null,
+                password_hash: passwordHash,
                 role,
                 department: department || 'General',
                 status: status || 'active',
