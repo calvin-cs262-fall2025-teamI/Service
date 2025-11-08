@@ -124,6 +124,28 @@ app.get('/health', async (req, res) => {
 });
 
 // ==================== USER ENDPOINTS ====================
+
+// Login
+app.post('/api/login', (req, res, next) => {
+    const { email, password } = req.body;
+    db.oneOrNone('SELECT * FROM users WHERE email=${email}', { email: email.toLowerCase() })
+        .then(user => {
+            if (!user) {
+                return res.status(401).json({ status: 'error', message: 'Invalid email or password' });
+            }
+            // Compare passwords
+            return bcrypt.compare(password, user.password_hash)
+                .then(isMatch => {
+                    if (!isMatch) {
+                        return res.status(401).json({ status: 'error', message: 'Invalid email or password' });
+                    }
+                    // Successful login
+                    res.json({ status: 'success', user: { id: user.id, email: user.email, role: user.role } });
+                });
+        })
+        .catch(error => handleError(res, error, next));
+});
+
 // Get all users
 app.get('/api/users', (req, res, next) => {
     db.manyOrNone('SELECT id, name, email, phone, role, department, status, avatar, created_at FROM users ORDER BY name')
