@@ -20,11 +20,12 @@
   },
   "homepage": "https://github.com/calvin-cs262-fall2025-teamI/Service#readme",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
     "express": "^5.1.0",
     "pg": "^8.11.3",
-    "dotenv": "^16.3.1",
     "pg-promise": "^11.5.4"
-     }
+  }
 }
