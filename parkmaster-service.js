@@ -122,7 +122,6 @@ app.get('/health', async (req, res) => {
 });
 
 // ==================== USER ENDPOINTS ====================
-
 // Get all users
 app.get('/api/users', (req, res, next) => {
     db.manyOrNone('SELECT id, name, email, phone, role, department, status, avatar, created_at FROM users ORDER BY name')
@@ -146,20 +145,60 @@ app.get('/api/users/email/:email', (req, res, next) => {
         .catch(error => handleError(res, error, next));
 });
 
-// Create new user
-app.post('/api/users', (req, res, next) => {
-    db.one(
-        'INSERT INTO users(name, email, phone, role, department, status, avatar) VALUES (${name}, ${email}, ${phone}, ${role}, ${department}, ${status}, ${avatar}) RETURNING id',
-        req.body
-    )
-        .then(data => res.status(201).send(data))
-        .catch(error => handleError(res, error, next));
+// Create new user - FIXED VERSION
+app.post('/api/users', async (req, res, next) => {
+    try {
+        // Validate required fields
+        const { name, email, phone, role, department, status } = req.body;
+        
+        if (!name || !email || !role) {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'Missing required fields: name, email, and role are required' 
+            });
+        }
+
+        // Check if email already exists
+        const existingUser = await db.oneOrNone('SELECT id FROM users WHERE email=${email}', { email });
+        if (existingUser) {
+            return res.status(409).json({ 
+                status: 'error', 
+                message: 'A user with this email already exists' 
+            });
+        }
+
+        // Insert the new user and return the full user object
+        const newUser = await db.one(
+            `INSERT INTO users(name, email, phone, role, department, status, avatar) 
+             VALUES ($/name/, $/email/, $/phone/, $/role/, $/department/, $/status/, $/avatar/) 
+             RETURNING id, name, email, phone, role, department, status, avatar, created_at`,
+            {
+                name,
+                email: email.toLowerCase(), // Normalize email
+                phone: phone || null,
+                role,
+                department: department || 'General',
+                status: status || 'active',
+                avatar: req.body.avatar || null
+            }
+        );
+
+        res.status(201).json(newUser);
+    } catch (error) {
+        console.error('Error creating user:', error);
+        handleError(res, error, next);
+    }
 });
 
 // Update user
 app.put('/api/users/:id', (req, res, next) => {
     db.oneOrNone(
-        'UPDATE users SET name=${body.name}, email=${body.email}, phone=${body.phone}, role=${body.role}, department=${body.department}, status=${body.status}, avatar=${body.avatar} WHERE id=${id} RETURNING id',
+        `UPDATE users 
+         SET name=$/body.name/, email=$/body.email/, phone=$/body.phone/, 
+             role=$/body.role/, department=$/body.department/, 
+             status=$/body.status/, avatar=$/body.avatar/ 
+         WHERE id=$/id/ 
+         RETURNING id, name, email, phone, role, department, status, avatar`,
         { id: req.params.id, body: req.body }
     )
         .then(data => returnDataOr404(res, data))
