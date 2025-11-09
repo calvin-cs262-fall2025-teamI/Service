@@ -235,8 +235,8 @@ app.put('/api/users/:id', (req, res, next) => {
 
 // Delete user (soft delete - set status to inactive)
 app.delete('/api/users/:id', (req, res, next) => {
-    db.oneOrNone(
-        'UPDATE users SET status=${"inactive"} WHERE id=${id} RETURNING id',
+    db.oneOrNone(  
+        "UPDATE users SET status = 'inactive' WHERE id = ${id} RETURNING id",
         req.params
     )
         .then(data => returnDataOr404(res, data))
