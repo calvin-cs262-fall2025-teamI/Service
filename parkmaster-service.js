@@ -27,6 +27,9 @@ const bcrypt = require('bcrypt');
 const express = require('express');
 const pgPromise = require('pg-promise');
 const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 // Initialize pg-promise
@@ -46,10 +49,54 @@ const db = pgp({
 const app = express();
 const port = parseInt(process.env.PORT) || 3000;
 
-// Middleware
+// ==================== FILE UPLOAD CONFIGURATION ====================
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads', 'avatars');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    console.log('✅ Created uploads directory:', uploadsDir);
+}
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+        // Create unique filename: timestamp-randomstring.extension
+        const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(7)}${path.extname(file.originalname)}`;
+        cb(null, uniqueName);
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: { 
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    },
+    fileFilter: (req, file, cb) => {
+        // Only allow image files
+        const allowedTypes = /jpeg|jpg|png|gif|webp/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        if (extname && mimetype) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files (JPEG, JPG, PNG, GIF, WEBP) are allowed!'));
+        }
+    }
+});
+
+// ==================== MIDDLEWARE ====================
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -169,8 +216,8 @@ app.get('/api/users/email/:email', (req, res, next) => {
         .catch(error => handleError(res, error, next));
 });
 
-// Create new user - FIXED VERSION
-app.post('/api/users', async (req, res, next) => {
+// Create new user WITH AVATAR UPLOAD
+app.post('/api/users', upload.single('avatar'), async (req, res, next) => {
     try {
         // Validate required fields
         const { name, email, phone, password, role, department, status } = req.body;
@@ -183,7 +230,7 @@ app.post('/api/users', async (req, res, next) => {
         }
 
         // Check if email already exists
-        const existingUser = await db.oneOrNone('SELECT id FROM users WHERE email = $1', [email]);
+        const existingUser = await db.oneOrNone('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
         if (existingUser) {
             return res.status(409).json({ 
                 status: 'error', 
@@ -193,6 +240,16 @@ app.post('/api/users', async (req, res, next) => {
 
         // Hash the password
         const passwordHash = await bcrypt.hash(password, 10);
+
+        // Build avatar URL if file was uploaded
+        let avatarUrl = null;
+        if (req.file) {
+            // Get the host from request or use environment variable
+            const host = req.get('host') || process.env.APP_URL || 'parkmaster-amhpdpftb4hqcfc9.canadacentral-01.azurewebsites.net';
+            const protocol = req.protocol || 'https';
+            avatarUrl = `${protocol}://${host}/uploads/avatars/${req.file.filename}`;
+            console.log('✅ Avatar uploaded:', avatarUrl);
+        }
 
         // Insert the new user and return the full user object
         const newUser = await db.one(
@@ -207,30 +264,70 @@ app.post('/api/users', async (req, res, next) => {
                 role,
                 department: department || 'General',
                 status: status || 'active',
-                avatar: req.body.avatar || null
+                avatar: avatarUrl
             }
         );
 
         res.status(201).json(newUser);
     } catch (error) {
         console.error('Error creating user:', error);
+        
+        // Handle multer errors
+        if (error instanceof multer.MulterError) {
+            if (error.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ 
+                    status: 'error', 
+                    message: 'File size too large. Maximum size is 5MB.' 
+                });
+            }
+            return res.status(400).json({ 
+                status: 'error', 
+                message: error.message 
+            });
+        }
+        
         handleError(res, error, next);
     }
 });
 
-// Update user
-app.put('/api/users/:id', (req, res, next) => {
-    db.oneOrNone(
-        `UPDATE users 
-         SET name=$/body.name/, email=$/body.email/, phone=$/body.phone/, 
-             role=$/body.role/, department=$/body.department/, 
-             status=$/body.status/, avatar=$/body.avatar/ 
-         WHERE id=$/id/ 
-         RETURNING id, name, email, phone, role, department, status, avatar`,
-        { id: req.params.id, body: req.body }
-    )
-        .then(data => returnDataOr404(res, data))
-        .catch(error => handleError(res, error, next));
+// Update user WITH AVATAR UPLOAD
+app.put('/api/users/:id', upload.single('avatar'), async (req, res, next) => {
+    try {
+        const { name, email, phone, role, department, status } = req.body;
+        
+        // Build avatar URL if new file was uploaded
+        let avatarUrl = req.body.avatar; // Keep existing avatar by default
+        if (req.file) {
+            const host = req.get('host') || process.env.APP_URL || 'parkmaster-amhpdpftb4hqcfc9.canadacentral-01.azurewebsites.net';
+            const protocol = req.protocol || 'https';
+            avatarUrl = `${protocol}://${host}/uploads/avatars/${req.file.filename}`;
+            console.log('✅ Avatar updated:', avatarUrl);
+        }
+
+        const updatedUser = await db.oneOrNone(
+            `UPDATE users 
+             SET name=$/name/, email=$/email/, phone=$/phone/, 
+                 role=$/role/, department=$/department/, 
+                 status=$/status/, avatar=$/avatar/ 
+             WHERE id=$/id/ 
+             RETURNING id, name, email, phone, role, department, status, avatar`,
+            {
+                id: req.params.id,
+                name,
+                email: email?.toLowerCase(),
+                phone,
+                role,
+                department,
+                status,
+                avatar: avatarUrl
+            }
+        );
+
+        returnDataOr404(res, updatedUser);
+    } catch (error) {
+        console.error('Error updating user:', error);
+        handleError(res, error, next);
+    }
 });
 
 // Delete user (soft delete - set status to inactive)
@@ -491,6 +588,7 @@ app.listen(port, () => {
     console.log('=================================');
     console.log(`📍 Port: ${port}`);
     console.log(`🗄️  Database: ${process.env.AZURE_POSTGRESQL_DATABASE}`);
+    console.log(`📁 Uploads: ${uploadsDir}`);
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log('=================================');
     console.log('✅ Server is running!');
