@@ -148,14 +148,14 @@ app.post('/api/login', (req, res, next) => {
 
 // Get all users
 app.get('/api/users', (req, res, next) => {
-    db.manyOrNone('SELECT id, name, email, phone, role, department, status, avatar, created_at FROM users ORDER BY name')
+    db.manyOrNone('SELECT id, name, email, phone, role, department, status, avatar, created_at FROM users WHERE status=\'active\' ORDER BY name')
         .then(data => res.send(data))
         .catch(error => handleError(res, error, next));
 });
 
 // Get user by ID
 app.get('/api/users/:id', (req, res, next) => {
-    db.oneOrNone('SELECT id, name, email, phone, role, department, status, avatar, created_at FROM users WHERE id=${id}', 
+    db.oneOrNone('SELECT id, name, email, phone, role, department, status, avatar, created_at FROM users WHERE id=${id} AND status=\'active\'', 
         req.params)
         .then(data => returnDataOr404(res, data))
         .catch(error => handleError(res, error, next));
