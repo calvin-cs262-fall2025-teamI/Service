@@ -409,7 +409,7 @@ app.get('/api/parking-lots/:id', (req, res, next) => {
 // Create new parking lot
 app.post('/api/parking-lots', (req, res, next) => {
     db.one(
-        'INSERT INTO parking_lots(name, rows, cols, spaces, merged_aisles) VALUES (${name}, ${rows}, ${cols}, ${spaces}, ${merged_aisles}) RETURNING id',
+        'INSERT INTO parking_lots(name, rows, cols, location, capacity, spaces, merged_aisles) VALUES (${name}, ${rows}, ${cols}, ${location}, ${capacity}, ${spaces}, ${merged_aisles}) RETURNING id',
         req.body
     )
         .then(data => res.status(201).send(data))
