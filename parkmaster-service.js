@@ -472,7 +472,7 @@ app.get('/api/schedules/:id', (req, res, next) => {
 // Create new schedule
 app.post('/api/schedules', (req, res, next) => {
     db.one(
-        'INSERT INTO schedules(user_id, parking_lot, spot_number, start_time, end_time, date, is_recurring, recurring_days, location, parking_lot, status) VALUES (${user_id}, ${parking_lot}, ${spot_number}, ${start_time}, ${end_time}, ${date}, ${is_recurring}, ${recurring_days}, ${location}, ${parking_lot}, ${status}) RETURNING id',
+        'INSERT INTO schedules(user_id, parking_lot, spot_number, start_time, end_time, date, is_recurring, recurring_days, location) VALUES (${user_id}, ${parking_lot}, ${spot_number}, ${start_time}, ${end_time}, ${date}, ${is_recurring}, ${recurring_days}, ${location}) RETURNING id',
         req.body
     )
         .then(data => res.status(201).send(data))
@@ -482,7 +482,7 @@ app.post('/api/schedules', (req, res, next) => {
 // Update schedule
 app.put('/api/schedules/:id', (req, res, next) => {
     db.oneOrNone(
-        'UPDATE schedules SET user_id=${body.user_id}, parking_lot_id=${body.parking_lot_id}, spot_number=${body.spot_number}, start_time=${body.start_time}, end_time=${body.end_time}, date=${body.date}, is_recurring=${body.is_recurring}, recurring_days=${body.recurring_days}, location=${body.location}, parking_lot=${body.parking_lot}, status=${body.status} WHERE id=${id} RETURNING id',
+        'UPDATE schedules SET user_id=${body.user_id}, parking_lot=${body.parking_lot}, spot_number=${body.spot_number}, start_time=${body.start_time}, end_time=${body.end_time}, date=${body.date}, is_recurring=${body.is_recurring}, recurring_days=${body.recurring_days}, location=${body.location}, parking_lot=${body.parking_lot}, status=${body.status} WHERE id=${id} RETURNING id',
         { id: req.params.id, body: req.body }
     )
         .then(data => returnDataOr404(res, data))
