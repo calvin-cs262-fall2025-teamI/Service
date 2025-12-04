@@ -342,6 +342,8 @@ app.delete('/api/users/:id', (req, res, next) => {
 
 // ==================== VEHICLE ENDPOINTS ====================
 
+const MAX_VEHICLES_PER_USER = 3; // Maximum vehicles per user
+
 // Get all vehicles
 app.get('/api/vehicles', (req, res, next) => {
     db.manyOrNone('SELECT * FROM vehicles ORDER BY created_at DESC')
@@ -363,20 +365,51 @@ app.get('/api/vehicles/:id', (req, res, next) => {
         .catch(error => handleError(res, error, next));
 });
 
-// Create new vehicle
-app.post('/api/vehicles', (req, res, next) => {
-    db.one(
-        'INSERT INTO vehicles(user_id, make, model, year, color, license_plate) VALUES (${user_id}, ${make}, ${model}, ${year}, ${color}, ${license_plate}) RETURNING id',
-        req.body
-    )
-        .then(data => res.status(201).send(data))
-        .catch(error => handleError(res, error, next));
+// Create new vehicle (with 3-vehicle limit check)
+app.post('/api/vehicles', async (req, res, next) => {
+    try {
+        const { user_id, make, model, year, color, license_plate } = req.body;
+
+        // Validate required fields
+        if (!user_id || !make || !model || !year || !color || !license_plate) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Missing required fields'
+            });
+        }
+
+        // Check how many vehicles this user already has
+        const vehicleCount = await db.one(
+            'SELECT COUNT(*) as count FROM vehicles WHERE user_id = $1',
+            [user_id]
+        );
+
+        // Enforce the 3-vehicle limit
+        if (parseInt(vehicleCount.count) >= MAX_VEHICLES_PER_USER) {
+            return res.status(403).json({
+                status: 'error',
+                message: `You can only register up to ${MAX_VEHICLES_PER_USER} vehicles. Please delete an existing vehicle before adding a new one.`,
+                vehicleCount: parseInt(vehicleCount.count),
+                maxVehicles: MAX_VEHICLES_PER_USER
+            });
+        }
+
+        // If under the limit, create the vehicle
+        const newVehicle = await db.one(
+            'INSERT INTO vehicles(user_id, make, model, year, color, license_plate) VALUES (${user_id}, ${make}, ${model}, ${year}, ${color}, ${license_plate}) RETURNING *',
+            req.body
+        );
+
+        res.status(201).json(newVehicle);
+    } catch (error) {
+        handleError(res, error, next);
+    }
 });
 
 // Update vehicle
 app.put('/api/vehicles/:id', (req, res, next) => {
     db.oneOrNone(
-        'UPDATE vehicles SET make=${body.make}, model=${body.model}, year=${body.year}, color=${body.color}, license_plate=${body.license_plate} WHERE id=${id} RETURNING id',
+        'UPDATE vehicles SET make=${body.make}, model=${body.model}, year=${body.year}, color=${body.color}, license_plate=${body.license_plate} WHERE id=${id} RETURNING *',
         { id: req.params.id, body: req.body }
     )
         .then(data => returnDataOr404(res, data))
