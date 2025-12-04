@@ -245,7 +245,7 @@ app.post('/api/users', upload.single('avatar'), async (req, res, next) => {
         let avatarUrl = null;
         if (req.file) {
             // Get the host from request or use environment variable
-            const host = req.get('host') || process.env.APP_URL || 'parkmaster-amhpdpftb4hqcfc9.canadacentral-01.azurewebsites.net';
+            const host = req.get('host') || process.env.APP_URL || 'parkmaster-amhpdpftb4hqcfc9.canadacentral-01.azurewebsites.net/';
             const protocol = req.protocol || 'https';
             avatarUrl = `${protocol}://${host}/uploads/avatars/${req.file.filename}`;
             console.log('✅ Avatar uploaded:', avatarUrl);
